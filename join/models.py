@@ -3,20 +3,26 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
-# class TaskItem(models.Model):
-#     assignedTo = models.CharField(max_length=100)
-#     assignedToID = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-#     category = models.CharField(max_length=100)
-#     categoryboard = models.CharField(max_length=100)
-#     colors = models.CharField(max_length=100)
-#     description = models.CharField(max_length=100)
-#     dueDate = models.DateField()
-#     prio = models.CharField(max_length=100)
-#     subtasks = models.CharField(max_length=100)
-#     title = models.CharField(max_length=100)
-    
-#     def __str__(self):
-#         return f'{self.title} - {self.description}'
+from django.conf import settings
+from django.db import models
+
+class TaskItem(models.Model):
+    assignedTo = models.TextField()
+    assignedToID = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='tasks', blank=True)
+    category = models.CharField(max_length=100)
+    categoryboard = models.CharField(max_length=100)
+    colors = models.TextField()
+    description = models.TextField(blank=True)
+    dueDate = models.DateField()
+    prio = models.CharField(max_length=100)
+    subtasks = models.TextField(default="No subtasks", blank=True)
+    title = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f'{self.title} - {self.description}'
+
+
+
 
 
 class CustomUser(AbstractUser):

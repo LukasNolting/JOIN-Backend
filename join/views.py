@@ -3,8 +3,8 @@ from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import generics
-from .models import CustomUser
-from .serializers import UserSerializer
+from .models import CustomUser, TaskItem
+from .serializers import TaskItemSerializer, UserSerializer
 from rest_framework import generics
 from .models import CustomUser
 
@@ -36,26 +36,34 @@ class LoginView(ObtainAuthToken):
 class UserCreateView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
+    
+class UserGetView(generics.ListAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer    
 
   
 
         
-# class TaskItemView(APIView):
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import TaskItem
+from .serializers import TaskItemSerializer
 
-#     # authentication_classes = [authentication.TokenAuthentication]
-#     permission_classes = []
+class TaskView(APIView):
+    permission_classes = []
 
-#     def get(self, request, format=None):
+    def get(self, request, format=None):
+        todos = TaskItem.objects.all()
+        serializer = TaskItemSerializer(todos, many=True)
+        return Response(serializer.data)
 
-#         todos = TaskItem.objects.all()
-#         serializer = TaskItemSerializer(todos, many=True)
-#         return Response(serializer.data)
-    
-#     def post(self, request, format=None):
-#         serializer = TaskItemSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=201)
-#         return Response(serializer.errors, status=400)
+    def post(self, request, format=None):
+        serializer = TaskItemSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
         
