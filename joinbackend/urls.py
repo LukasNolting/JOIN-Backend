@@ -30,6 +30,6 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/users/', UserGetView.as_view(), name='get_users'),
-    path('api/tasks/', TaskView.as_view(), name='task-list'),
+    path('api/tasks/', TaskView.as_view(), name='task-list'),  # Für alle Tasks
+    path('api/tasks/<int:id>/', TaskView.as_view(), name='task-detail'),  # Für einen spezifischen Task
 ]
-

@@ -15,13 +15,22 @@ class TaskItem(models.Model):
     description = models.TextField(blank=True)
     dueDate = models.DateField()
     prio = models.CharField(max_length=100)
-    subtasks = models.TextField(default="No subtasks", blank=True)
     title = models.CharField(max_length=100)
 
     def __str__(self):
         return f'{self.title} - {self.description}'
 
 
+class Subtask(models.Model):
+
+
+    title = models.CharField(max_length=100)
+    is_checked = models.BooleanField(default=False)
+    parent_task = models.ForeignKey(
+        TaskItem,
+        related_name='subtasks',
+        on_delete=models.CASCADE
+    )
 
 
 

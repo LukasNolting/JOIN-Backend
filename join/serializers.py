@@ -1,14 +1,112 @@
+import json
 from django.http import JsonResponse
 from rest_framework import serializers
-from .models import CustomUser, TaskItem
-from rest_framework import serializers
-from django.conf import settings
+from .models import CustomUser, Subtask, TaskItem
+from django.contrib.auth import get_user_model
 
-# class TaskItemSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = TaskItem
-#         fields = '__all__'
-        
+User = get_user_model()
+
+class JSONListField(serializers.ListField):
+    def to_representation(self, value):
+        # Wenn value None ist, gib eine leere Liste zurück
+        if value is None:
+            return []
+        # Lade den JSON-String als Liste
+        return json.loads(value)
+
+    def to_internal_value(self, data):
+        # Speichere die Liste als JSON-String
+        return data
+
+
+class SubtaskSerializer(serializers.ModelSerializer):
+    subtaskName = serializers.CharField(source='title')  # Verwende title im Modell
+    subtaskStatus = serializers.BooleanField(source='is_checked')  # Verwende is_checked im Modell
+
+    class Meta:
+        model = Subtask
+        fields = ['subtaskName', 'subtaskStatus']
+
+
+class TaskItemSerializer(serializers.ModelSerializer):
+    assignedTo = JSONListField(child=serializers.CharField())
+    colors = JSONListField(child=serializers.CharField())
+    subtasks = SubtaskSerializer(many=True, required=False)
+    assignedToID = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True)
+    
+    class Meta:
+        model = TaskItem
+        fields = '__all__'
+
+    def create(self, validated_data):
+        subtasks_data = validated_data.pop('subtasks', [])
+        assignedToID = validated_data.pop('assignedToID', [])
+        assignedTo = validated_data.pop('assignedTo', [])
+        colors = validated_data.pop('colors', [])
+
+        # Erstelle das TaskItem-Objekt
+        task = TaskItem.objects.create(**validated_data)
+
+        # Setze die Many-to-Many-Beziehung für assignedToID
+        task.assignedToID.set(assignedToID)
+        task.assignedTo = json.dumps(assignedTo)
+        task.colors = json.dumps(colors)
+        task.save()
+
+        # Erstelle Subtasks
+        for subtask_data in subtasks_data:
+            Subtask.objects.create(parent_task=task, **subtask_data)
+
+        return task
+
+    def update(self, instance, validated_data):
+        subtasks_data = validated_data.pop('subtasks', [])
+        assignedToID = validated_data.pop('assignedToID', [])
+        assignedTo = validated_data.pop('assignedTo', [])
+        colors = validated_data.pop('colors', [])
+
+        # Aktualisiere die TaskItem-Felder
+        instance.assignedTo = assignedTo
+        instance.colors = colors
+        instance.category = validated_data.get('category', instance.category)
+        instance.categoryboard = validated_data.get('categoryboard', instance.categoryboard)
+        instance.description = validated_data.get('description', instance.description)
+        instance.dueDate = validated_data.get('dueDate', instance.dueDate)
+        instance.prio = validated_data.get('prio', instance.prio)
+        instance.title = validated_data.get('title', instance.title)
+        instance.save()
+
+        # Aktualisiere Many-to-Many-Beziehung
+        instance.assignedToID.set(assignedToID)
+
+        # Verwalte Subtasks
+        current_subtasks = instance.subtasks.all()
+        incoming_subtasks = {subtask['subtaskName'] for subtask in subtasks_data}
+
+        # Lösche Subtasks, die nicht mehr vorhanden sind
+        for subtask in current_subtasks:
+            if subtask.title not in incoming_subtasks:
+                subtask.delete()
+
+        # Erstelle oder aktualisiere bestehende Subtasks
+        for subtask_data in subtasks_data:
+            subtask_name = subtask_data.get('subtaskName')
+            subtask_status = subtask_data.get('subtaskStatus')
+            subtask_id = subtask_data.get('id')
+
+            if subtask_id:
+                try:
+                    subtask = Subtask.objects.get(id=subtask_id, parent_task=instance)
+                    subtask.title = subtask_name
+                    subtask.is_checked = subtask_status
+                    subtask.save()
+                except Subtask.DoesNotExist:
+                    Subtask.objects.create(parent_task=instance, title=subtask_name, is_checked=subtask_status)
+            else:
+                Subtask.objects.create(parent_task=instance, title=subtask_name, is_checked=subtask_status)
+
+        return instance
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,50 +130,3 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get(self, validated_data):
         return JsonResponse(validated_data)
- 
- 
- 
-from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from .models import TaskItem
-import json
-
-User = get_user_model()
-
-class JSONListField(serializers.ListField):
-    def to_representation(self, value):
-        return json.loads(value)
-
-    def to_internal_value(self, data):
-        return json.dumps(data)
-
-class TaskItemSerializer(serializers.ModelSerializer):
-    assignedTo = JSONListField(child=serializers.CharField())
-    colors = JSONListField(child=serializers.CharField())
-    subtasks = JSONListField(child=serializers.CharField(), required=False)
-    assignedToID = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True)
-    
-    class Meta:
-        model = TaskItem
-        fields = '__all__'
-
-    def create(self, validated_data):
-        assignedToID = validated_data.pop('assignedToID')
-        task = TaskItem.objects.create(**validated_data)
-        task.assignedToID.set(assignedToID)
-        return task
-
-    def update(self, instance, validated_data):
-        assignedToID = validated_data.pop('assignedToID')
-        instance.assignedTo = validated_data.get('assignedTo', instance.assignedTo)
-        instance.category = validated_data.get('category', instance.category)
-        instance.categoryboard = validated_data.get('categoryboard', instance.categoryboard)
-        instance.colors = validated_data.get('colors', instance.colors)
-        instance.description = validated_data.get('description', instance.description)
-        instance.dueDate = validated_data.get('dueDate', instance.dueDate)
-        instance.prio = validated_data.get('prio', instance.prio)
-        instance.subtasks = validated_data.get('subtasks', instance.subtasks)
-        instance.title = validated_data.get('title', instance.title)
-        instance.save()
-        instance.assignedToID.set(assignedToID)
-        return instance
