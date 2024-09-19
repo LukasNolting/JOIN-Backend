@@ -1,7 +1,7 @@
 import json
 from django.http import JsonResponse
 from rest_framework import serializers
-from .models import CustomUser, Subtask, TaskItem
+from .models import Contacts, CustomUser, Subtask, TaskItem
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -20,12 +20,12 @@ class JSONListField(serializers.ListField):
 
 
 class SubtaskSerializer(serializers.ModelSerializer):
-    subtaskName = serializers.CharField(source='title')  # Verwende title im Modell
-    subtaskStatus = serializers.BooleanField(source='is_checked')  # Verwende is_checked im Modell
+    title = serializers.CharField  # Verwende title im Modell
+    subtaskStatus = serializers.BooleanField  # Verwende subtaskStatus im Modell
 
     class Meta:
         model = Subtask
-        fields = ['subtaskName', 'subtaskStatus']
+        fields = ['id','title', 'subtaskStatus']
 
 
 class TaskItemSerializer(serializers.ModelSerializer):
@@ -61,13 +61,14 @@ class TaskItemSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         subtasks_data = validated_data.pop('subtasks', [])
+        print(subtasks_data)
         assignedToID = validated_data.pop('assignedToID', [])
         assignedTo = validated_data.pop('assignedTo', [])
         colors = validated_data.pop('colors', [])
 
         # Aktualisiere die TaskItem-Felder
-        instance.assignedTo = assignedTo
-        instance.colors = colors
+        instance.assignedTo = json.dumps(assignedTo)  # Konvertiere in JSON-String
+        instance.colors = json.dumps(colors)  # Konvertiere in JSON-String        
         instance.category = validated_data.get('category', instance.category)
         instance.categoryboard = validated_data.get('categoryboard', instance.categoryboard)
         instance.description = validated_data.get('description', instance.description)
@@ -78,10 +79,12 @@ class TaskItemSerializer(serializers.ModelSerializer):
 
         # Aktualisiere Many-to-Many-Beziehung
         instance.assignedToID.set(assignedToID)
+        
+        instance.subtasks.all().delete()
 
         # Verwalte Subtasks
         current_subtasks = instance.subtasks.all()
-        incoming_subtasks = {subtask['subtaskName'] for subtask in subtasks_data}
+        incoming_subtasks = {subtask['title'] for subtask in subtasks_data}
 
         # Lösche Subtasks, die nicht mehr vorhanden sind
         for subtask in current_subtasks:
@@ -90,7 +93,8 @@ class TaskItemSerializer(serializers.ModelSerializer):
 
         # Erstelle oder aktualisiere bestehende Subtasks
         for subtask_data in subtasks_data:
-            subtask_name = subtask_data.get('subtaskName')
+            print(subtask_data)
+            subtask_name = subtask_data.get('title')
             subtask_status = subtask_data.get('subtaskStatus')
             subtask_id = subtask_data.get('id')
 
@@ -98,12 +102,13 @@ class TaskItemSerializer(serializers.ModelSerializer):
                 try:
                     subtask = Subtask.objects.get(id=subtask_id, parent_task=instance)
                     subtask.title = subtask_name
-                    subtask.is_checked = subtask_status
+                    subtask.subtaskStatus = subtask_status
                     subtask.save()
+                       
                 except Subtask.DoesNotExist:
-                    Subtask.objects.create(parent_task=instance, title=subtask_name, is_checked=subtask_status)
+                    Subtask.objects.create(parent_task=instance, title=subtask_name, subtaskStatus=subtask_status)
             else:
-                Subtask.objects.create(parent_task=instance, title=subtask_name, is_checked=subtask_status)
+                Subtask.objects.create(parent_task=instance, title=subtask_name, subtaskStatus=subtask_status)
 
         return instance
 
@@ -130,3 +135,8 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get(self, validated_data):
         return JsonResponse(validated_data)
+    
+class ContactsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contacts
+        fields = '__all__'    

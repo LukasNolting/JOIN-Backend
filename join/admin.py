@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 
-from .models import TaskItem, CustomUser, Subtask
+from .models import TaskItem, CustomUser, Subtask, Contacts
 
 # from join.models import TaskItem
 
@@ -39,4 +39,8 @@ class SubtasksAdmin(admin.ModelAdmin):
     Admin interface configuration for the Subtask model.
     """
 
-    list_display = ('title', 'is_checked')
+    list_display = ('id','title', 'subtaskStatus')
+
+@admin.register(Contacts)
+class ContactAdmin(admin.ModelAdmin):
+    list_display = ('id', 'firstname', 'lastname', 'initials', 'email', 'phone', 'color', 'taskassigned')    

@@ -25,7 +25,7 @@ class Subtask(models.Model):
 
 
     title = models.CharField(max_length=100)
-    is_checked = models.BooleanField(default=False)
+    subtaskStatus = models.BooleanField(default=False)
     parent_task = models.ForeignKey(
         TaskItem,
         related_name='subtasks',
@@ -41,3 +41,16 @@ class CustomUser(AbstractUser):
     
     def __str__(self):
         return self.email
+
+
+class Contacts(models.Model):
+    firstname = models.CharField(max_length=100, blank=True, null=True)
+    lastname = models.CharField(max_length=100, blank=True, null=True)
+    fullname = models.CharField(max_length=100, blank=True, null=True)
+    initials = models.CharField(max_length=5, blank=True, null=True)
+    email = models.EmailField(max_length=100, blank=True, null=True)
+    phone = models.CharField(max_length=100, blank=True, null=True)
+    color = models.CharField(max_length=7, blank=True, null=True)
+    id = models.AutoField(primary_key=True)
+    taskassigned = models.BooleanField(("Task assigned"), default=False)
+    contactAssignedTo  = models.ForeignKey(CustomUser,related_name='contacts',on_delete=models.CASCADE)

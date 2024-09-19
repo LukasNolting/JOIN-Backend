@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from join.views import LoginView, TaskView, UserCreateView, UserGetView
+from join.views import ContactsView, LoginView, TaskView, UserCreateView, UserGetView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -32,4 +32,6 @@ urlpatterns = [
     path('api/users/', UserGetView.as_view(), name='get_users'),
     path('api/tasks/', TaskView.as_view(), name='task-list'),  # Für alle Tasks
     path('api/tasks/<int:id>/', TaskView.as_view(), name='task-detail'),  # Für einen spezifischen Task
+    path('api/contacts/', ContactsView.as_view(), name='contact-list'),
+    path('api/contacts/<int:id>/', ContactsView.as_view(), name='contact-detail'),
 ]
