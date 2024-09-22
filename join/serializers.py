@@ -7,68 +7,127 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class JSONListField(serializers.ListField):
+    """
+    Custom field for handling JSON-encoded lists in the model.
+
+    This serializer field is used to serialize a JSON string stored in the 
+    database into a Python list and vice versa.
+    """
+
     def to_representation(self, value):
-        # Wenn value None ist, gib eine leere Liste zurück
+        """
+        Convert the JSON string into a Python list.
+
+        Args:
+            value (str): JSON-encoded string representing a list.
+
+        Returns:
+            list: Python list representation of the input value. 
+            Returns an empty list if value is None.
+        """
         if value is None:
             return []
-        # Lade den JSON-String als Liste
         return json.loads(value)
 
     def to_internal_value(self, data):
-        # Speichere die Liste als JSON-String
+        """
+        Convert the input list into a JSON string.
+
+        Args:
+            data (list): Python list to be converted into a JSON string.
+
+        Returns:
+            str: JSON-encoded string representation of the list.
+        """
         return data
 
 
 class SubtaskSerializer(serializers.ModelSerializer):
-    title = serializers.CharField  # Verwende title im Modell
-    subtaskStatus = serializers.BooleanField  # Verwende subtaskStatus im Modell
+    """
+    Serializer for the Subtask model.
+
+    This serializer handles the conversion of Subtask model instances 
+    into JSON format and vice versa.
+    """
+
+    title = serializers.CharField()
+    subtaskStatus = serializers.BooleanField()
 
     class Meta:
         model = Subtask
-        fields = ['id','title', 'subtaskStatus']
+        fields = ['id', 'title', 'subtaskStatus']
 
 
 class TaskItemSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the TaskItem model.
+
+    Handles the serialization and deserialization of TaskItem objects, 
+    including nested subtasks and assigned users.
+    """
+
     assignedTo = JSONListField(child=serializers.CharField())
     colors = JSONListField(child=serializers.CharField())
     subtasks = SubtaskSerializer(many=True, required=False)
     assignedToID = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True)
-    
+
     class Meta:
         model = TaskItem
         fields = '__all__'
 
     def create(self, validated_data):
+        """
+        Create a new TaskItem instance.
+
+        Handles the creation of a TaskItem, including associated subtasks and assigned users.
+
+        Args:
+            validated_data (dict): Validated data from the request.
+
+        Returns:
+            TaskItem: Newly created TaskItem instance.
+        """
         subtasks_data = validated_data.pop('subtasks', [])
         assignedToID = validated_data.pop('assignedToID', [])
         assignedTo = validated_data.pop('assignedTo', [])
         colors = validated_data.pop('colors', [])
 
-        # Erstelle das TaskItem-Objekt
+        # Create the TaskItem object
         task = TaskItem.objects.create(**validated_data)
 
-        # Setze die Many-to-Many-Beziehung für assignedToID
+        # Set many-to-many relationship for assigned users
         task.assignedToID.set(assignedToID)
         task.assignedTo = json.dumps(assignedTo)
         task.colors = json.dumps(colors)
         task.save()
 
-        # Erstelle Subtasks
+        # Create subtasks
         for subtask_data in subtasks_data:
             Subtask.objects.create(parent_task=task, **subtask_data)
 
         return task
 
     def update(self, instance, validated_data):
+        """
+        Update an existing TaskItem instance.
+
+        Handles updating of a TaskItem, including associated subtasks and assigned users.
+
+        Args:
+            instance (TaskItem): The existing TaskItem instance.
+            validated_data (dict): Validated data from the request.
+
+        Returns:
+            TaskItem: Updated TaskItem instance.
+        """
         subtasks_data = validated_data.pop('subtasks', [])
-        print(subtasks_data)
         assignedToID = validated_data.pop('assignedToID', [])
         assignedTo = validated_data.pop('assignedTo', [])
         colors = validated_data.pop('colors', [])
 
-        # Aktualisiere die TaskItem-Felder
-        instance.assignedTo = json.dumps(assignedTo)  # Konvertiere in JSON-String
-        instance.colors = json.dumps(colors)  # Konvertiere in JSON-String        
+        # Update TaskItem fields
+        instance.assignedTo = json.dumps(assignedTo)
+        instance.colors = json.dumps(colors)
         instance.category = validated_data.get('category', instance.category)
         instance.categoryboard = validated_data.get('categoryboard', instance.categoryboard)
         instance.description = validated_data.get('description', instance.description)
@@ -77,50 +136,56 @@ class TaskItemSerializer(serializers.ModelSerializer):
         instance.title = validated_data.get('title', instance.title)
         instance.save()
 
-        # Aktualisiere Many-to-Many-Beziehung
+        # Update many-to-many relationship
         instance.assignedToID.set(assignedToID)
-        
+
+        # Delete all existing subtasks and recreate them based on new data
         instance.subtasks.all().delete()
 
-        # Verwalte Subtasks
-        current_subtasks = instance.subtasks.all()
-        incoming_subtasks = {subtask['title'] for subtask in subtasks_data}
-
-        # Lösche Subtasks, die nicht mehr vorhanden sind
-        for subtask in current_subtasks:
-            if subtask.title not in incoming_subtasks:
-                subtask.delete()
-
-        # Erstelle oder aktualisiere bestehende Subtasks
+        # Manage subtasks
         for subtask_data in subtasks_data:
-            print(subtask_data)
-            subtask_name = subtask_data.get('title')
-            subtask_status = subtask_data.get('subtaskStatus')
             subtask_id = subtask_data.get('id')
 
+            # If the subtask exists, update it
             if subtask_id:
                 try:
                     subtask = Subtask.objects.get(id=subtask_id, parent_task=instance)
-                    subtask.title = subtask_name
-                    subtask.subtaskStatus = subtask_status
+                    subtask.title = subtask_data.get('title')
+                    subtask.subtaskStatus = subtask_data.get('subtaskStatus')
                     subtask.save()
-                       
                 except Subtask.DoesNotExist:
-                    Subtask.objects.create(parent_task=instance, title=subtask_name, subtaskStatus=subtask_status)
+                    # If the subtask does not exist, create a new one
+                    Subtask.objects.create(parent_task=instance, **subtask_data)
             else:
-                Subtask.objects.create(parent_task=instance, title=subtask_name, subtaskStatus=subtask_status)
+                # If no subtask ID is provided, create a new subtask
+                Subtask.objects.create(parent_task=instance, **subtask_data)
 
         return instance
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the CustomUser model.
+
+    Handles the serialization and deserialization of CustomUser objects.
+    Provides special handling for password fields to ensure they are write-only.
+    """
+
     class Meta:
         model = CustomUser
         fields = '__all__'
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
-        print(str(validated_data))
+        """
+        Create a new CustomUser instance.
+
+        Args:
+            validated_data (dict): Validated data from the request.
+
+        Returns:
+            CustomUser: Newly created CustomUser instance.
+        """
         user = CustomUser.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -132,11 +197,27 @@ class UserSerializer(serializers.ModelSerializer):
             rememberlogin=validated_data['rememberlogin'],
         )
         return user
-    
+
     def get(self, validated_data):
+        """
+        Custom get method (if needed).
+
+        Args:
+            validated_data (dict): Validated data from the request.
+
+        Returns:
+            JsonResponse: JSON response with the validated data.
+        """
         return JsonResponse(validated_data)
-    
+
+
 class ContactsSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Contacts model.
+
+    Handles the serialization and deserialization of Contacts objects.
+    """
+
     class Meta:
         model = Contacts
-        fields = '__all__'    
+        fields = '__all__'
