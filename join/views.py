@@ -6,7 +6,9 @@ from rest_framework import generics
 from .models import Contacts, TaskItem, CustomUser, Subtask
 from .serializers import ContactsSerializer, TaskItemSerializer, UserSerializer
 from rest_framework import status
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 
 class LoginView(ObtainAuthToken):
@@ -59,6 +61,8 @@ class UserGetView(generics.ListAPIView):
 
     Inherits from `ListAPIView` and uses the `UserSerializer` to serialize the user data.
     """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
 
@@ -73,7 +77,8 @@ class TaskView(APIView):
     - DELETE: Delete a specific task by ID.
     - PUT: Update a specific task by ID.
     """
-    permission_classes = []
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, id=None, format=None):
         """
@@ -206,7 +211,8 @@ class ContactsView(APIView):
     - DELETE: Delete a specific contact by ID.
     - PUT: Update a specific contact by ID.
     """
-    permission_classes = []
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
@@ -266,3 +272,8 @@ class ContactsView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def docs_view(request):
+    # Weiterleitung zu /docs/index.html
+    return redirect('/docs/index.html')

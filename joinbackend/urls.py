@@ -14,24 +14,32 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import os
+from django.conf import settings
 from django.contrib import admin
+from django.urls import path, re_path
+from django.views.generic import TemplateView
+from django.views.static import serve
+from join.views import ContactsView, LoginView, TaskView, UserCreateView, UserGetView, docs_view
+
+
+
+
+from django.conf.urls.static import static
 from django.urls import path
 
-from join.views import ContactsView, LoginView, TaskView, UserCreateView, UserGetView
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', LoginView.as_view(), name='login'),
     path('users/', UserCreateView.as_view(), name='user-register'),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/users/', UserGetView.as_view(), name='get_users'),
     path('api/tasks/', TaskView.as_view(), name='task-list'),  # Für alle Tasks
     path('api/tasks/<int:id>/', TaskView.as_view(), name='task-detail'),  # Für einen spezifischen Task
     path('api/contacts/', ContactsView.as_view(), name='contact-list'),
     path('api/contacts/<int:id>/', ContactsView.as_view(), name='contact-detail'),
+    path('docs/', docs_view)
 ]
+
+if settings.DEBUG:
+    urlpatterns += static('/docs', document_root=settings.BASE_DIR / 'build')

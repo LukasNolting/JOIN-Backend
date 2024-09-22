@@ -1,24 +1,30 @@
 # Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+import os
+import sys
+import django
 
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+# Pfad überprüfen und setzen
+django_project_path = os.path.abspath('../../Join_Backend')
+print(f"Django Project Path: {django_project_path}")  # Debugging-Ausgabe
+sys.path.insert(0, django_project_path)
 
-project = 'Join Backend'
-copyright = '2024, Lukas Nolting'
-author = 'Lukas Nolting'
+# Setzen Sie das Django-Settings-Modul
+os.environ['DJANGO_SETTINGS_MODULE'] = 'joinbackend.settings'
+
+# Django-Konfiguration laden
+django.setup()
+
+project = 'join'
+copyright = '2024, Lukas'
+author = 'Lukas'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon',]
 
 templates_path = ['_templates']
 exclude_patterns = []
-
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
