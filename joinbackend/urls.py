@@ -30,15 +30,15 @@ from django.urls import path
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('login/', LoginView.as_view(), name='login'),
-    path('users/', UserCreateView.as_view(), name='user-register'),
-    path('api/users/', UserGetView.as_view(), name='get_users'),
-    path('api/tasks/', TaskView.as_view(), name='task-list'),  # Für alle Tasks
-    path('api/tasks/<int:id>/', TaskView.as_view(), name='task-detail'),  # Für einen spezifischen Task
-    path('api/contacts/', ContactsView.as_view(), name='contact-list'),
-    path('api/contacts/<int:id>/', ContactsView.as_view(), name='contact-detail'),
-    path('docs/', docs_view)
+    path('join/admin/', admin.site.urls),
+    path('join/login/', LoginView.as_view(), name='login'),
+    path('join/users/', UserCreateView.as_view(), name='user-register'),
+    path('join/api/users/', UserGetView.as_view(), name='get_users'),
+    path('join/api/tasks/', TaskView.as_view(), name='task-list'),  # Für alle Tasks
+    path('join/api/tasks/<int:id>/', TaskView.as_view(), name='task-detail'),  # Für einen spezifischen Task
+    path('join/api/contacts/', ContactsView.as_view(), name='contact-list'),
+    path('join/api/contacts/<int:id>/', ContactsView.as_view(), name='contact-detail'),
+    path('join/docs/', docs_view)
 ]
 
 if settings.DEBUG:
